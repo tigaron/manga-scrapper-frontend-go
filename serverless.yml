@@ -1,0 +1,42 @@
+app: manga-scrapper-go
+service: manga-scrapper-go
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: ap-southeast-1
+  stage: ${opt:stage, 'dev'}
+  logRetentionInDays: 7
+  environment:
+    SERIES_TABLE: "MangaScraper-SeriesTable-prod"
+  iam:
+    role:
+      name: IAM-${self:service}-${sls:stage}
+      path: /${self:service}-${sls:stage}/
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+          Resource: "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.SERIES_TABLE}"
+
+functions:
+  Series:
+    handler: bin/main
+    name: ${self:service}-${sls:stage}
+    description: Endpoint for webtoon's series
+    memorySize: 1024
+    timeout: 10
+    package:
+      patterns:
+        - "./bin/main"
+    events:
+      - http:
+          path: series
+          method: get
+      - http:
+          path: /series/{seriesId}
+          method: get
