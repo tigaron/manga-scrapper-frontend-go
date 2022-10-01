@@ -49,9 +49,10 @@ func FetchAllSeries(tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]S
 	return item, nil
 }
 
-func FetchAllSeriesPaginated(pageNum int, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
+func FetchAllSeriesPaginated(pageSize int64, pageNum int, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
 	input := &dynamodb.ScanInput{
 		TableName: aws.String(tableName),
+		Limit:     aws.Int64(pageSize),
 	}
 
 	result := new(dynamodb.ScanOutput)
@@ -110,7 +111,7 @@ func FetchSeriesByProvider(provider string, tableName string, ddbClient dynamodb
 	return item, nil
 }
 
-func FetchSeriesByProviderPaginated(provider string, pageNum int, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
+func FetchSeriesByProviderPaginated(provider string, pageSize int64, pageNum int, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
 	keyCond := expression.Key("_type").Equal(expression.Value(provider))
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).Build()
 	if err != nil {
@@ -122,6 +123,7 @@ func FetchSeriesByProviderPaginated(provider string, pageNum int, tableName stri
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		KeyConditionExpression:    expr.KeyCondition(),
+		Limit:                     aws.Int64(pageSize),
 	}
 
 	result := new(dynamodb.QueryOutput)
