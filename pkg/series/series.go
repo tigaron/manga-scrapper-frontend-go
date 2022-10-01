@@ -2,6 +2,7 @@ package series
 
 import (
 	"errors"
+	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -34,12 +35,14 @@ func FetchAllSeries(tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]S
 
 	result, err := ddbClient.Scan(input)
 	if err != nil {
+		log.Printf("Couldn't get any result. Here's why: %v\n", err)
 		return nil, errors.New(ErrorFailedToFetchRecord)
 	}
 
 	item := new([]Series)
 	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, item)
 	if err != nil {
+		log.Printf("Couldn't unmarshal result. Here's why: %v\n", err)
 		return nil, errors.New(ErrorFailedToUnmarshalRecord)
 	}
 
@@ -47,24 +50,29 @@ func FetchAllSeries(tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]S
 }
 
 func FetchSeriesByProvider(provider string, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
-	keyCond := expression.KeyEqual(expression.Key("_type"), expression.Value(provider))
+	keyCond := expression.Key("_type").Equal(expression.Value(provider))
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).Build()
 	if err != nil {
 		return nil, errors.New(ErrorFailedToBuildExpression)
 	}
 
 	input := &dynamodb.QueryInput{
-		KeyConditionExpression: expr.KeyCondition(),
+		TableName:                 aws.String(tableName),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		KeyConditionExpression:    expr.KeyCondition(),
 	}
 
 	result, err := ddbClient.Query(input)
 	if err != nil {
+		log.Printf("Couldn't get result of '%v'. Here's why: %v\n", provider, err)
 		return nil, errors.New(ErrorFailedToFetchRecord)
 	}
 
 	item := new([]Series)
 	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, item)
 	if err != nil {
+		log.Printf("Couldn't unmarshal result. Here's why: %v\n", err)
 		return nil, errors.New(ErrorFailedToUnmarshalRecord)
 	}
 
@@ -86,12 +94,14 @@ func FetchOneSeries(provider string, seriesId string, tableName string, ddbClien
 
 	result, err := ddbClient.GetItem(input)
 	if err != nil {
+		log.Printf("Couldn't get result of '%v' in '%v'. Here's why: %v\n", seriesId, provider, err)
 		return nil, errors.New(ErrorFailedToFetchRecord)
 	}
 
 	item := new(Series)
 	err = dynamodbattribute.UnmarshalMap(result.Item, item)
 	if err != nil {
+		log.Printf("Couldn't unmarshal result. Here's why: %v\n", err)
 		return nil, errors.New(ErrorFailedToUnmarshalRecord)
 	}
 
