@@ -49,6 +49,37 @@ func FetchAllSeries(tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]S
 	return item, nil
 }
 
+func FetchAllSeriesPaginated(pageNum int, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
+	input := &dynamodb.ScanInput{
+		TableName: aws.String(tableName),
+	}
+
+	result := new(dynamodb.ScanOutput)
+	index := 0
+	err := ddbClient.ScanPages(input, func(page *dynamodb.ScanOutput, lastPage bool) bool {
+		index++
+		if index == pageNum {
+			result = page
+		}
+
+		return index != pageNum
+	})
+
+	if err != nil {
+		log.Printf("Couldn't get any result. Here's why: %v\n", err)
+		return nil, errors.New(ErrorFailedToFetchRecord)
+	}
+
+	item := new([]Series)
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, item)
+	if err != nil {
+		log.Printf("Couldn't unmarshal result. Here's why: %v\n", err)
+		return nil, errors.New(ErrorFailedToUnmarshalRecord)
+	}
+
+	return item, nil
+}
+
 func FetchSeriesByProvider(provider string, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
 	keyCond := expression.Key("_type").Equal(expression.Value(provider))
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).Build()
@@ -64,6 +95,46 @@ func FetchSeriesByProvider(provider string, tableName string, ddbClient dynamodb
 	}
 
 	result, err := ddbClient.Query(input)
+	if err != nil {
+		log.Printf("Couldn't get result of '%v'. Here's why: %v\n", provider, err)
+		return nil, errors.New(ErrorFailedToFetchRecord)
+	}
+
+	item := new([]Series)
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, item)
+	if err != nil {
+		log.Printf("Couldn't unmarshal result. Here's why: %v\n", err)
+		return nil, errors.New(ErrorFailedToUnmarshalRecord)
+	}
+
+	return item, nil
+}
+
+func FetchSeriesByProviderPaginated(provider string, pageNum int, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
+	keyCond := expression.Key("_type").Equal(expression.Value(provider))
+	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).Build()
+	if err != nil {
+		return nil, errors.New(ErrorFailedToBuildExpression)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(tableName),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		KeyConditionExpression:    expr.KeyCondition(),
+	}
+
+	result := new(dynamodb.QueryOutput)
+	index := 0
+	err = ddbClient.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
+		index++
+		if index == pageNum {
+			result = page
+		}
+
+		return index != pageNum
+	})
+
 	if err != nil {
 		log.Printf("Couldn't get result of '%v'. Here's why: %v\n", provider, err)
 		return nil, errors.New(ErrorFailedToFetchRecord)
