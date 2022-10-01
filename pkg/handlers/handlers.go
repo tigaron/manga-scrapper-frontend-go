@@ -104,3 +104,7 @@ func GetSeriesById(request events.APIGatewayProxyRequest, tableName string, ddbC
 
 	return apiResponse(http.StatusOK, result)
 }
+
+func UnhandledMethod() (*events.APIGatewayProxyResponse, error) {
+	return apiResponse(http.StatusMethodNotAllowed, ErrorMethodNotAllowed)
+}
