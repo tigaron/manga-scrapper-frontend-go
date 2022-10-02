@@ -8,3 +8,6 @@ clean:
 
 deploy: clean build
 	serverless deploy --stage dev --verbose
+
+function: clean build
+	serverless deploy function --function Webtoons --stage dev --verbose

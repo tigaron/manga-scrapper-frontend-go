@@ -15,6 +15,7 @@ var (
 	ErrorMethodNotAllowed     = "method not allowed"
 	ErrorResourceNotFound     = "resource not found"
 	ErrorInvalidLimitValue    = "invalid limit value"
+	ErrorInvalidPageValue     = "invalid page value"
 	ErrorInvalidProviderValue = "invalid provider value"
 	ErrorResultDataNotFound   = "result data not found"
 )
@@ -28,7 +29,7 @@ func GetAllSeries(request events.APIGatewayProxyRequest, tableName string, ddbCl
 
 	if exist { // If 'limit' is provided --> fetch all Series data with pagination
 		pageSize, err := strconv.ParseInt(limit, 10, 64)
-		if pageSize == 0 || err != nil {
+		if pageSize <= 0 || err != nil {
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidLimitValue)})
 		}
 
@@ -37,7 +38,7 @@ func GetAllSeries(request events.APIGatewayProxyRequest, tableName string, ddbCl
 		if exist { // If 'page' is provided --> convert value to integer
 			pageNum, _ = strconv.Atoi(page)
 			if pageNum <= 1 {
-				pageNum = 1
+				return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidPageValue)})
 			}
 		} else { // Otherwise --> set value to 1
 			pageNum = 1
@@ -76,7 +77,7 @@ func GetSeriesByProvider(request events.APIGatewayProxyRequest, tableName string
 	limit, exist := request.QueryStringParameters["limit"]
 	if exist { // If 'limit' is provided --> fetch Series data by provider with pagination
 		pageSize, err := strconv.ParseInt(limit, 10, 64)
-		if pageSize == 0 || err != nil {
+		if pageSize <= 0 || err != nil {
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidLimitValue)})
 		}
 
@@ -85,7 +86,7 @@ func GetSeriesByProvider(request events.APIGatewayProxyRequest, tableName string
 		if exist { // If 'page' is provided --> convert value to integer
 			pageNum, _ = strconv.Atoi(page)
 			if pageNum <= 1 {
-				pageNum = 1
+				return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidPageValue)})
 			}
 		} else { // Otherwise --> set value to 1
 			pageNum = 1
@@ -140,7 +141,7 @@ func GetChaptersBySeries(request events.APIGatewayProxyRequest, tableName string
 	limit, exist := request.QueryStringParameters["limit"]
 	if exist { // If 'limit' is provided --> fetch Chapters data by Series with pagination
 		pageSize, err := strconv.ParseInt(limit, 10, 64)
-		if pageSize == 0 || err != nil {
+		if pageSize <= 0 || err != nil {
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidLimitValue)})
 		}
 
@@ -149,7 +150,7 @@ func GetChaptersBySeries(request events.APIGatewayProxyRequest, tableName string
 		if exist { // If 'page' is provided --> convert value to integer
 			pageNum, _ = strconv.Atoi(page)
 			if pageNum <= 1 {
-				pageNum = 1
+				return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidPageValue)})
 			}
 		} else { // Otherwise --> set value to 1
 			pageNum = 1
