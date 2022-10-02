@@ -1,5 +1,6 @@
-app: manga-scrapper-go
-service: manga-scrapper-go
+org: tigaron
+app: manga-scraper
+service: manga-scraper-fe-go
 
 frameworkVersion: "3"
 
@@ -11,6 +12,7 @@ provider:
   logRetentionInDays: 7
   environment:
     SERIES_TABLE: "MangaScraper-SeriesTable-prod"
+    CHAPTERS_TABLE: "MangaScraper-ChapterTable-prod"
   iam:
     role:
       name: IAM-${self:service}-${sls:stage}
@@ -22,12 +24,17 @@ provider:
             - dynamodb:Scan
             - dynamodb:GetItem
           Resource: "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.SERIES_TABLE}"
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:GetItem
+          Resource: "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.CHAPTERS_TABLE}"
 
 functions:
-  Series:
+  Webtoons:
     handler: bin/main
     name: ${self:service}-${sls:stage}
-    description: Endpoint for webtoon's series
+    description: API to fetch webtoons' data
     memorySize: 1024
     timeout: 10
     package:
@@ -39,4 +46,10 @@ functions:
           method: get
       - http:
           path: /series/{seriesId}
+          method: get
+      - http:
+          path: /series/{seriesId}/chapters
+          method: get
+      - http:
+          path: /series/{seriesId}/chapters/{chaptersId}
           method: get

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"manga-scraper-fe-go/pkg/chapters"
 	"manga-scraper-fe-go/pkg/series"
 	"net/http"
 	"strconv"
@@ -13,8 +13,10 @@ import (
 
 var (
 	ErrorMethodNotAllowed     = "method not allowed"
+	ErrorResourceNotFound     = "resource not found"
 	ErrorInvalidLimitValue    = "invalid limit value"
 	ErrorInvalidProviderValue = "invalid provider value"
+	ErrorResultDataNotFound   = "result data not found"
 )
 
 type ErrorBody struct {
@@ -25,7 +27,6 @@ func GetAllSeries(request events.APIGatewayProxyRequest, tableName string, ddbCl
 	limit, exist := request.QueryStringParameters["limit"]
 
 	if exist { // If 'limit' is provided --> fetch all Series data with pagination
-		log.Printf("Derived limit from query: %v", limit)
 		pageSize, err := strconv.ParseInt(limit, 10, 64)
 		if pageSize == 0 || err != nil {
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidLimitValue)})
@@ -33,9 +34,11 @@ func GetAllSeries(request events.APIGatewayProxyRequest, tableName string, ddbCl
 
 		var pageNum int
 		page, exist := request.QueryStringParameters["page"]
-		log.Printf("Derived page from query: %v", page)
 		if exist { // If 'page' is provided --> convert value to integer
 			pageNum, _ = strconv.Atoi(page)
+			if pageNum <= 1 {
+				pageNum = 1
+			}
 		} else { // Otherwise --> set value to 1
 			pageNum = 1
 		}
@@ -45,6 +48,10 @@ func GetAllSeries(request events.APIGatewayProxyRequest, tableName string, ddbCl
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
 		}
 
+		if len(*result) == 0 {
+			return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
+		}
+
 		return apiResponse(http.StatusOK, result)
 	} else { // Otherwise --> fetch all Series data without pagination
 		result, err := series.FetchAllSeries(tableName, ddbClient)
@@ -52,21 +59,22 @@ func GetAllSeries(request events.APIGatewayProxyRequest, tableName string, ddbCl
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
 		}
 
+		if len(*result) == 0 {
+			return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
+		}
+
 		return apiResponse(http.StatusOK, result)
 	}
 }
 
 func GetSeriesByProvider(request events.APIGatewayProxyRequest, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*events.APIGatewayProxyResponse, error) {
-	provider, exist := request.QueryStringParameters["provider"]
-	if !exist {
+	provider := request.QueryStringParameters["provider"]
+	if len(provider) == 0 {
 		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidProviderValue)})
 	}
 
-	log.Printf("Derived provider from query: %v", provider)
-
 	limit, exist := request.QueryStringParameters["limit"]
 	if exist { // If 'limit' is provided --> fetch Series data by provider with pagination
-		log.Printf("Derived limit from query: %v", limit)
 		pageSize, err := strconv.ParseInt(limit, 10, 64)
 		if pageSize == 0 || err != nil {
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidLimitValue)})
@@ -74,9 +82,11 @@ func GetSeriesByProvider(request events.APIGatewayProxyRequest, tableName string
 
 		var pageNum int
 		page, exist := request.QueryStringParameters["page"]
-		log.Printf("Derived page from query: %v", page)
 		if exist { // If 'page' is provided --> convert value to integer
 			pageNum, _ = strconv.Atoi(page)
+			if pageNum <= 1 {
+				pageNum = 1
+			}
 		} else { // Otherwise --> set value to 1
 			pageNum = 1
 		}
@@ -86,11 +96,19 @@ func GetSeriesByProvider(request events.APIGatewayProxyRequest, tableName string
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
 		}
 
+		if len(*result) == 0 {
+			return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
+		}
+
 		return apiResponse(http.StatusOK, result)
 	} else { // Otherwise --> fetch Series data by provider without pagination
 		result, err := series.FetchSeriesByProvider(provider, tableName, ddbClient)
 		if err != nil {
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
+		}
+
+		if len(*result) == 0 {
+			return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
 		}
 
 		return apiResponse(http.StatusOK, result)
@@ -99,13 +117,10 @@ func GetSeriesByProvider(request events.APIGatewayProxyRequest, tableName string
 
 func GetSeriesById(request events.APIGatewayProxyRequest, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*events.APIGatewayProxyResponse, error) {
 	seriesId := request.PathParameters["seriesId"]
-	log.Printf("Derived seriesId from path: %v", seriesId)
 	provider, exist := request.QueryStringParameters["provider"]
-	if !exist {
+	if !exist || len(provider) == 0 {
 		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidProviderValue)})
 	}
-
-	log.Printf("Derived provider from query: %v", provider)
 
 	result, err := series.FetchOneSeries(provider, seriesId, tableName, ddbClient)
 	if err != nil {
@@ -113,6 +128,71 @@ func GetSeriesById(request events.APIGatewayProxyRequest, tableName string, ddbC
 	}
 
 	return apiResponse(http.StatusOK, result)
+}
+
+func GetChaptersBySeries(request events.APIGatewayProxyRequest, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*events.APIGatewayProxyResponse, error) {
+	seriesId := request.PathParameters["seriesId"]
+	provider, exist := request.QueryStringParameters["provider"]
+	if !exist || len(provider) == 0 {
+		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidProviderValue)})
+	}
+
+	limit, exist := request.QueryStringParameters["limit"]
+	if exist { // If 'limit' is provided --> fetch Chapters data by Series with pagination
+		pageSize, err := strconv.ParseInt(limit, 10, 64)
+		if pageSize == 0 || err != nil {
+			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidLimitValue)})
+		}
+
+		var pageNum int
+		page, exist := request.QueryStringParameters["page"]
+		if exist { // If 'page' is provided --> convert value to integer
+			pageNum, _ = strconv.Atoi(page)
+			if pageNum <= 1 {
+				pageNum = 1
+			}
+		} else { // Otherwise --> set value to 1
+			pageNum = 1
+		}
+
+		result, err := chapters.FetchChaptersBySeriesPaginated(provider, seriesId, pageSize, pageNum, tableName, ddbClient)
+		if err != nil {
+			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
+		}
+
+		if len(*result) == 0 {
+			return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
+		}
+
+		return apiResponse(http.StatusOK, result)
+	} else { // Otherwise --> fetch Chapters data by Series without pagination
+		result, err := chapters.FetchChaptersBySeries(provider, seriesId, tableName, ddbClient)
+		if err != nil {
+			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
+		}
+
+		return apiResponse(http.StatusOK, result)
+	}
+}
+
+func GetChaptersById(request events.APIGatewayProxyRequest, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*events.APIGatewayProxyResponse, error) {
+	seriesId := request.PathParameters["seriesId"]
+	chaptersId := request.PathParameters["chaptersId"]
+	provider, exist := request.QueryStringParameters["provider"]
+	if !exist || len(provider) == 0 {
+		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(ErrorInvalidProviderValue)})
+	}
+
+	result, err := chapters.FetchOneChapters(provider, seriesId, chaptersId, tableName, ddbClient)
+	if err != nil {
+		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
+	}
+
+	return apiResponse(http.StatusOK, result)
+}
+
+func UnhandledResource() (*events.APIGatewayProxyResponse, error) {
+	return apiResponse(http.StatusNotFound, ErrorResourceNotFound)
 }
 
 func UnhandledMethod() (*events.APIGatewayProxyResponse, error) {

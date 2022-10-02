@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"manga-scraper-fe-go/pkg/handlers"
 	"os"
 
@@ -13,8 +12,9 @@ import (
 )
 
 var (
-	tableName = os.Getenv("SERIES_TABLE")
-	ddbClient dynamodbiface.DynamoDBAPI
+	seriesTable   = os.Getenv("SERIES_TABLE")
+	chaptersTable = os.Getenv("CHAPTERS_TABLE")
+	ddbClient     dynamodbiface.DynamoDBAPI
 )
 
 func main() {
@@ -27,20 +27,24 @@ func main() {
 }
 
 func handler(request events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
-	log.Printf("Request HTTP method: %v", request.HTTPMethod)
 	if request.HTTPMethod != "GET" {
 		return handlers.UnhandledMethod()
 	}
 
-	_, exist := request.PathParameters["seriesId"]
-	if exist {
-		return handlers.GetSeriesById(request, tableName, ddbClient)
+	switch request.Resource {
+	case "/series/{seriesId}/chapters/{chaptersId}":
+		return handlers.GetChaptersById(request, chaptersTable, ddbClient)
+	case "/series/{seriesId}/chapters":
+		return handlers.GetChaptersBySeries(request, chaptersTable, ddbClient)
+	case "/series/{seriesId}":
+		return handlers.GetSeriesById(request, seriesTable, ddbClient)
+	case "/series":
+		if _, exist := request.QueryStringParameters["provider"]; exist {
+			return handlers.GetSeriesByProvider(request, seriesTable, ddbClient)
+		} else {
+			return handlers.GetAllSeries(request, seriesTable, ddbClient)
+		}
+	default:
+		return handlers.UnhandledResource()
 	}
-
-	_, exist = request.QueryStringParameters["provider"]
-	if exist {
-		return handlers.GetSeriesByProvider(request, tableName, ddbClient)
-	}
-
-	return handlers.GetAllSeries(request, tableName, ddbClient)
 }
