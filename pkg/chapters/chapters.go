@@ -18,18 +18,18 @@ var (
 )
 
 type Chapters struct {
-	ChaptersProvider string   `json:"_type"`
-	ChaptersId       string   `json:"_id"`
-	ChaptersTitle    string   `json:"ChapterTitle"`
-	ChaptersNumber   string   `json:"ChapterNumber"`
-	ChaptersDate     string   `json:"ChapterDate"`
-	ChaptersUrl      string   `json:"ChapterUrl"`
-	ChaptersShortUrl string   `json:"ChapterShortUrl"`
-	ChaptersOrder    int      `json:"ChapterOrder"`
-	ChaptersPrev     string   `json:"ChapterPrevSlug"`
-	ChaptersNext     string   `json:"ChapterNextSlug"`
-	ChaptersContent  []string `json:"ChapterContent"`
-	ScrapeDate       string   `json:"ScrapeDate"`
+	ChaptersProvider *string   `json:"_type"`
+	ChaptersId       *string   `json:"_id"`
+	ChaptersTitle    *string   `json:"ChapterTitle"`
+	ChaptersNumber   *string   `json:"ChapterNumber"`
+	ChaptersDate     *string   `json:"ChapterDate"`
+	ChaptersUrl      *string   `json:"ChapterUrl"`
+	ChaptersShortUrl *string   `json:"ChapterShortUrl"`
+	ChaptersOrder    *int      `json:"ChapterOrder"`
+	ChaptersPrev     *string   `json:"ChapterPrevSlug"`
+	ChaptersNext     *string   `json:"ChapterNextSlug"`
+	ChaptersContent  *[]string `json:"ChapterContent"`
+	ScrapeDate       *string   `json:"ScrapeDate"`
 }
 
 func FetchChaptersBySeries(provider string, seriesId string, tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Chapters, error) {

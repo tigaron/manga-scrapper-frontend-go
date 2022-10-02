@@ -18,14 +18,14 @@ var (
 )
 
 type Series struct {
-	SeriesProvider string `json:"_type"`
-	SeriesId       string `json:"_id"`
-	SeriesTitle    string `json:"MangaTitle"`
-	SeriesCover    string `json:"MangaCover"`
-	SeriesUrl      string `json:"MangaUrl"`
-	SeriesShortUrl string `json:"MangaShortUrl"`
-	SeriesSynopsis string `json:"MangaSynopsis"`
-	ScrapeDate     string `json:"ScrapeDate"`
+	SeriesProvider *string `json:"_type"`
+	SeriesId       *string `json:"_id"`
+	SeriesTitle    *string `json:"MangaTitle"`
+	SeriesCover    *string `json:"MangaCover"`
+	SeriesUrl      *string `json:"MangaUrl"`
+	SeriesShortUrl *string `json:"MangaShortUrl"`
+	SeriesSynopsis *string `json:"MangaSynopsis"`
+	ScrapeDate     *string `json:"ScrapeDate"`
 }
 
 func FetchAllSeries(tableName string, ddbClient dynamodbiface.DynamoDBAPI) (*[]Series, error) {
