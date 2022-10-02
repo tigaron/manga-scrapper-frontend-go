@@ -128,6 +128,10 @@ func GetSeriesById(request events.APIGatewayProxyRequest, tableName string, ddbC
 		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
 	}
 
+	if (series.Series{}) == *result {
+		return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
+	}
+
 	return apiResponse(http.StatusOK, result)
 }
 
@@ -172,6 +176,10 @@ func GetChaptersBySeries(request events.APIGatewayProxyRequest, tableName string
 			return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
 		}
 
+		if len(*result) == 0 {
+			return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
+		}
+
 		return apiResponse(http.StatusOK, result)
 	}
 }
@@ -187,6 +195,10 @@ func GetChaptersById(request events.APIGatewayProxyRequest, tableName string, dd
 	result, err := chapters.FetchOneChapters(provider, seriesId, chaptersId, tableName, ddbClient)
 	if err != nil {
 		return apiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
+	}
+
+	if (chapters.Chapters{}) == *result {
+		return apiResponse(http.StatusNotFound, ErrorBody{aws.String(ErrorResultDataNotFound)})
 	}
 
 	return apiResponse(http.StatusOK, result)
